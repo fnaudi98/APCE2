@@ -7,4 +7,4 @@
 
 #q1.2 looking at mismatch from peak date and seeing if there is a trend among individuals and looking at what success outcomes we find (clutch size & recruits, maybe mass too? ) 
 #mismatch becomes predictor variable and can look at within birds whether in years they are more matched they have a higher fitness. (clutch size and recruits will have same data for males and females  since they breed together, so maybe best to select females in second step.)
-#either looka t data separately or put data together and make sex a fixed factor).
+#either look at data separately or put data together and make sex a fixed factor).

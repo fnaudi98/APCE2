@@ -90,10 +90,16 @@ ggplot(combined_fem, aes(x = abs_mismatch, y = Mass)) +
 
 combined_fem$mismatch2 <- combined_fem$mismatch^2
 
-m_clutch2 <- lmer(ClutchSize ~ mismatch + mismatch2 + (1|IndividualID) + (1|Year),
+m_clutch2 <- lmer(ClutchSize ~ mismatch  + (1|IndividualID) + (1|Year),
                  data = combined_fem)
 summary(m_clutch2)
 plot(m_clutch2)
+confint(m_clutch2)
+#tried quadraticbut there was no support for that so it was removed
+
+m_clutch2b <- lmer(ClutchSize ~ mismatch + mismatch2 + PeakBiomass + (1|IndividualID) + (1|Year),
+                  data = combined_fem)
+summary(m_clutch2b)
 #Clutch size decreased significantly with increasing mismatch (β = –0.047 ± 0.003, p < 0.001).
 #Birds that laid further away from the caterpillar peak produced smaller clutches.
 #The quadratic mismatch effect was not significant (p = 0.14), indicating that the decline in clutch size was approximately linear rather than U-shaped.
@@ -118,4 +124,33 @@ ggplot(combined_fem, aes(x = mismatch, y = ClutchSize)) +
   geom_jitter(alpha=.3, width = .5) +
   geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE, aes(colour=as.factor(Year)))
 
+ggplot(combined_fem, aes(x = mismatch, y = ClutchSize)) +
+  geom_jitter(alpha=.3, width = .5) +
+  geom_vline(xintercept = -15, colour = "grey40", linetype = "dashed", size = 1) +
+  geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE) +
+  facet_wrap(~Year)
 
+
+ggplot(combined_fem, aes(x = mismatch, y = Recruits)) +
+  geom_jitter(alpha=.3, width = .5) +
+  geom_vline(xintercept = -15, colour = "grey40", linetype = "dashed", size = 1) +
+  geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE) +
+  facet_wrap(~Year)
+
+ggplot(combined_fem, aes(x = mismatch, y = Mass)) +
+  geom_jitter(alpha=.3, width = .5) +
+  geom_vline(xintercept = -15, colour = "grey40", linetype = "dashed", size = 1) +
+  geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE) +
+  facet_wrap(~Year)
+
+
+#calculate repeatability of mismatch
+m_mismatch <- lmer(mismatch ~ 1 + (1|IndividualID) + (1|Year),
+                   data = combined)
+summary(m_mismatch)
+6.978 / (6.978 + 49.064 + 20.660) = 0.09097546
+confint(m_mismatch)
+#95% CI
+(2.852365^2)/((2.852365^2) + (9.924270^2 + 4.669786^2)) = 0.06334759
+#2.5% CI
+(2.419190^2) /((2.419190^2) + (5.019311^2) + (4.424978^2)) = 0.1156014

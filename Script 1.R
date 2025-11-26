@@ -93,6 +93,7 @@ combined_fem$mismatch2 <- combined_fem$mismatch^2
 m_clutch2 <- lmer(ClutchSize ~ mismatch + mismatch2 + (1|IndividualID) + (1|Year),
                  data = combined_fem)
 summary(m_clutch2)
+plot(m_clutch2)
 #Clutch size decreased significantly with increasing mismatch (β = –0.047 ± 0.003, p < 0.001).
 #Birds that laid further away from the caterpillar peak produced smaller clutches.
 #The quadratic mismatch effect was not significant (p = 0.14), indicating that the decline in clutch size was approximately linear rather than U-shaped.
@@ -114,8 +115,7 @@ summary(m_mass2)
 
 
 ggplot(combined_fem, aes(x = mismatch, y = ClutchSize)) +
-  geom_point() +
-  geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE) 
-
+  geom_jitter(alpha=.3, width = .5) +
+  geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE, aes(colour=as.factor(Year)))
 
 

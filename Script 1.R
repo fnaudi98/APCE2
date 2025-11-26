@@ -154,3 +154,72 @@ confint(m_mismatch)
 (2.852365^2)/((2.852365^2) + (9.924270^2 + 4.669786^2)) = 0.06334759
 #2.5% CI
 (2.419190^2) /((2.419190^2) + (5.019311^2) + (4.424978^2)) = 0.1156014
+
+#centre averages 
+#Load package qdapTools to be able to use the lookup function
+install.packages("qdapTools")
+library(qdapTools)
+
+# centre Mean peak date per individual (between effect)
+ind_avg_peak <- aggregate(cbind(PeakDate) ~ IndividualID, combined_fem, mean)
+#Attach the mean peak date to the main dataset
+combined_fem$peak_mean <- lookup(combined_fem$IndividualID,ind_avg_peak[, c("IndividualID", "PeakDate")])
+
+#Calculate within individual effect: how each year's peak date differs from individual mean peak date
+combined_fem$peak_cen <- combined_fem$PeakDate - combined_fem$peak_mean
+#Plasticity = how much the year differs from her usual peak timing
+
+#Model with peak_cen (within individual effect) and peak_mean(between individual effect) 
+m_clutch_peak <- lmer(ClutchSize ~ peak_mean + peak_cen + (1|IndividualID),
+  data = combined_fem)
+
+summary(m_clutch_peak)
+
+confint(m_clutch_peak)
+#confidence intervals overlap (-0.01169989 -0.004407312 = peal_mean, -0.01512442 -0.007094657 = peak_cen) so no strong evidence that within individual effect is different from between individual effect
+#this means we attribute it to the within individual effect
+#The confidence intervals overlap - So the slopes are statistically indistinguishable - Therefore, between and within effects do not differ
+#Interpretation:Because the between- and within-individual effects overlap, there is no evidence females differ consistently in how peak date affects clutch size. Variation in clutch size is therefore attributed primarily to within-individual plasticity.
+
+
+plot(m_clutch_peak)
+
+#peakmean = between individual effect
+#peak_cen = within individual effect
+
+
+#try centring on lay date and using peak date as a fixed effect
+# centre lay per individual (between effect)
+ind_avg_laydate <- aggregate(cbind(LayingDate) ~ IndividualID, combined_fem, mean)
+#Attach the mean peak date to the main dataset
+combined_fem$laydate_between <- lookup(combined_fem$IndividualID,ind_avg_laydate[, c("IndividualID", "LayingDate")])
+
+#Calculate within individual effect: how each year's peak date differs from individual mean peak date
+combined_fem$laydate_within <- combined_fem$LayingDate - combined_fem$laydate_between
+#Plasticity = how much the year differs from her usual peak timing
+
+#Model with peak_cen (within individual effect) and peak_mean(between individual effect) 
+m_clutch_lay <- lmer(ClutchSize ~ laydate_between + laydate_within + PeakDate + (1|IndividualID),
+                      data = combined_fem)
+
+summary(m_clutch_lay)
+
+confint(m_clutch_lay)
+
+#try centring on mismatch 
+# centre mismatch per individual (between effect)
+ind_avg_mismatch <- aggregate(cbind(mismatch) ~ IndividualID, combined_fem, mean)
+#Attach the mean peak date to the main dataset
+combined_fem$mismatch_between <- lookup(combined_fem$IndividualID,ind_avg_mismatch[, c("IndividualID", "mismatch")])
+
+#Calculate within individual effect: how each year's peak date differs from individual mean peak date
+combined_fem$mismatch_within <- combined_fem$mismatch - combined_fem$mismatch_between
+#Plasticity = how much the year differs from her usual peak timing
+
+#Model with peak_cen (within individual effect) and peak_mean(between individual effect) 
+m_clutch_mismatch <- lmer(ClutchSize ~ mismatch_between + mismatch_within + (1|PeakBiomass) + (1|IndividualID),
+                     data = combined_fem)
+summary(m_clutch_mismatch)
+confint(m_clutch_mismatch)
+plot(m_clutch_mismatch)
+#effects mainly due to plasticity 

@@ -68,9 +68,8 @@ birddat |>
   geom_point() +
   geom_smooth(method = "lm", se=FALSE)
 
-# -------- Repeatability of burst-arr -----------
-
 # ID and Year as random effect
+# burstdate and sex as fixed effect
 rep_m3 <- birddat |>
   lmer(Arrival~ avgBurstDate+Sex+(1|IndividualID) + (1|Year),
        data=_)
@@ -78,13 +77,116 @@ summary(rep_m3)
 
 28.96/(28.96+45.02+31.11) # repeatability = 0.2755733
 
+# -------- Repeatability of Lay Date -----------
+# ID as random effect
+rep_m4 <- birddat |>
+  filter(Sex == 1) |>
+  lmer(LayingDate ~ (1|IndividualID),
+       data=_)
+summary(rep_m4)  
+
+# ID and Year as random effect
+rep_m5 <- birddat |>
+  filter(Sex == 1) |>
+  lmer(LayingDate ~ (1|IndividualID) + (1|Year),
+       data=_)
+summary(rep_m5) 
+
+9.911/(9.911+6.630+15.280) # repeatability = 0.311461
+
+# ID and Year as random effect
+# burstdate and sex as fixed effect
+rep_m6 <- birddat |>
+  filter(Sex == 1) |>
+  lmer(LayingDate ~ avgBurstDate + (1|IndividualID) + (1|Year),
+       data=_)
+summary(rep_m6) 
+
+9.928/(9.928+2.602+15.268) # repeatability = 0.357148
+
+# -------- Centering Within/Between Individuals -----------
+#Load package qdapTools to be able to use the lookup function
+#install.packages("qdapTools")
+library(qdapTools)
+
+# make female dataframe
+femdat <- birddat |>
+  filter(Sex == 1)
+
+#Center Annual Density per individual
+ind_avg<-aggregate(cbind(avgBurstDate)~IndividualID,femdat,mean) # Calc avg density per fem
+## Between individual effect: mean density for each female! This is how individuals differ
+femdat$Btw_Ind<-lookup(femdat$IndividualID,ind_avg[,c("IndividualID","avgBurstDate")])
+## Within individual effect: how each value differs from individual mean.
+femdat$Wthin_Ind<-femdat$avgBurstDate-femdat$Btw_Ind
+#Model with annual_density_cen (within individual effect) and avgAnDens (between individual effect
+m7<-lmer(LayingDate ~ Wthin_Ind + Btw_Ind + (1|IndividualID), data= femdat)
+summary(m7)
+confint(m7)
+
+
+### again but for Arrival
+
+#Center Annual Density per individual
+ind_avg<-aggregate(cbind(avgBurstDate)~IndividualID,birddat,mean) # Calc avg density per fem
+## Between individual effect: mean density for each female! This is how individuals differ
+birddat$Btw_Ind<-lookup(birddat$IndividualID,ind_avg[,c("IndividualID","avgBurstDate")])
+## Within individual effect: how each value differs from individual mean.
+birddat$Wthin_Ind<-birddat$avgBurstDate-birddat$Btw_Ind
+#Model with annual_density_cen (within individual effect) and avgAnDens (between individual effect
+m8<-lmer(Arrival ~ Wthin_Ind + Btw_Ind + Sex + (1|IndividualID), data= birddat)
+summary(m8)
+confint(m8)
+
+
+### again but for burst-arrival
+#Center Annual Density per individual
+ind_avg<-aggregate(cbind(burst_arr)~IndividualID,femdat,mean) # Calc avg density per fem
+## Between individual effect: mean density for each female! This is how individuals differ
+femdat$Btw_Ind<-lookup(femdat$IndividualID,ind_avg[,c("IndividualID","burst_arr")])
+## Within individual effect: how each value differs from individual mean.
+femdat$Wthin_Ind<-femdat$burst_arr-femdat$Btw_Ind
+#Model with annual_density_cen (within individual effect) and avgAnDens (between individual effect
+m9<-lmer(LayingDate ~ Wthin_Ind + Btw_Ind + (1|IndividualID), data= femdat)
+summary(m9)
+confint(m9)
+
+ggplot(femdat, aes(x = Wthin_Ind, y = LayingDate)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~Year)
+
+#
+# Extract the data actually used by the model:
+femdat_model <- femdat[rownames(model.frame(m9)), ] %>%
+  mutate(pred = predict(m9))
+
+set.seed(123)  # ensures reproducible sampling
+
+sample_ids <- femdat_model %>%
+  group_by(IndividualID) %>%
+  filter(n() >= 3) %>%
+  summarise() %>%
+  slice_sample(n = 20) %>%
+  pull(IndividualID)
+
+plotdat <- femdat_model %>%
+  filter(IndividualID %in% sample_ids)
+
+ggplot(femdat, aes(x = Wthin_Ind, y = LayingDate)) +
+  geom_point(alpha = 0.1) +
+  geom_line(data=plotdat, aes(y = pred, group = IndividualID),
+            alpha = 0.5, linewidth = 1, color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "black")
+
+
 
 # ---- TODO ----
-# [] redo what I did for arrival for lay date
-# [] within individual centering
-# [] between individual centering
-# [] instead of difference between dates use burstdate as a fixed effect
-# [] dont forget to use sex as fixed effect because males arrive earlier on average
+# [x] redo what I did for arrival for lay date
+# [x] within individual centering
+# [x] between individual centering
+# [x] instead of difference between dates use burstdate as a fixed effect
+# [x] dont forget to use sex as fixed effect because males arrive earlier on average
 
 
   

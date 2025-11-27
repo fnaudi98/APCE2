@@ -54,7 +54,7 @@ combined_fem <- combined |>
 
 #1.1 calculate repeatability for clutch size: 
 m_clutch_rep <- lmer(ClutchSize ~ 1 + (1|IndividualID) + (1|Year),
-                     data = combined_fem, family = )
+                     data = combined_fem)
 summary(m_clutch_rep)
 #repeatability
 0.19809 / (0.19809 + 0.03048 + 0.35030) #= 0.3422012

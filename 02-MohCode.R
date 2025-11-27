@@ -183,7 +183,9 @@ ggplot(femdat, aes(x = Wthin_Ind, y = LayingDate)) +
 #
 # Extract the data actually used by the model:
 femdat_model <- femdat[rownames(model.frame(m7)), ] %>%
-  mutate(pred = predict(m7))
+  mutate(pred = predict(m7),
+         budburst = Wthin_Ind + Btw_Ind    # uses ONLY your variables
+  )
 
 set.seed(123)  # ensures reproducible sampling
 
@@ -197,17 +199,53 @@ sample_ids <- femdat_model %>%
 plotdat <- femdat_model %>%
   filter(IndividualID %in% sample_ids)
 
-ggplot(femdat, aes(x = Wthin_Ind, y = LayingDate)) +
-  geom_smooth(data=plotdat, aes(x=Wthin_Ind+mean(femdat$avgBurstDate, na.rm=TRUE),
-                                y=pred,group = IndividualID),
-              method="lm",
-              formula = y~x, se=FALSE,
-            alpha = 0.8, linewidth = .5, color = "steelblue") +
-  geom_smooth(data=femdat_model,aes(x=Btw_Ind, y=pred),
-    method = "lm", se = FALSE, color = "black") +
-  labs(x="Budburst from Apr 1",
-       y="Lay Date from Apr 1")
-
+ggplot() +
+  # Reaction norm lines (model predictions)
+  geom_line(
+    data = plotdat,
+    aes(
+      x = budburst,
+      y = pred,
+      group = IndividualID,
+      color = "Individual reaction norms"
+    ),
+    linewidth = 0.8,
+    alpha = 0.8
+  ) +
+  
+  # Population-level fixed-effect line
+  geom_smooth(
+    data = femdat_model,
+    aes(
+      x = budburst,
+      y = LayingDate,
+      color = "Population-level effect"
+    ),
+    method = "lm",
+    se = FALSE,
+    linewidth = 1.1
+  ) +
+  
+  scale_color_manual(
+    name = "",
+    values = c(
+      "Individual reaction norms" = "steelblue",
+      "Population-level effect" = "black"
+    )
+  ) +
+  
+  labs(
+    title = "Within vs Between Individual Lay Dates Centered on Budburst Date",
+    x = "Budburst date (days since April 1)",
+    y = "Laying date (days since April 1)"
+  ) +
+  #theme_classic(base_size = 13) +
+  theme(
+    axis.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold"),
+    plot.margin = margin(8, 8, 8, 8),
+    legend.position = "top"
+  )
 
 
 # ---- TODO ----

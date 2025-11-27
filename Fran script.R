@@ -50,7 +50,22 @@ combined_fem <- combined |>
 
 
 #---- begin models----
-#model for clutch size
+#1 model for clutch size
+
+#1.1 calculate repeatability for clutch size: 
+m_clutch_rep <- lmer(ClutchSize ~ 1 + (1|IndividualID) + (1|Year),
+                     data = combined_fem, family = )
+summary(m_clutch_rep)
+#repeatability
+0.19809 / (0.19809 + 0.03048 + 0.35030) #= 0.3422012
+confint(m_clutch_rep)
+#95% CI
+(0.4788353^2)/((0.4788353^2) + (0.2476464^2 + 0.6146856^2)) #= 0.3430071
+#2.5% CI
+(0.4096222^2) /((0.4096222^2) + (0.1225611^2) + (0.5701928^2)) #= 0.3303406
+
+#1.2 clutch size explained by mismatch
+#tried to do this quadratic, but it provided no added value.
 m_clutch <- lmer(ClutchSize ~ mismatch  + (1|IndividualID) + (1|Year),
                  data = combined_fem)
 summary(m_clutch) #if std error is as least half of the estumate then it is significant, negative = higher mismatch, smaller clutch
@@ -59,19 +74,8 @@ confint(m_clutch)
 #tried quadratic but there was no support for that so it was removed
 
 
-#calculate repeatability for clutch size: 
-m_clutch_rep <- lmer(ClutchSize ~ 1 + (1|IndividualID) + (1|Year),
-                   data = combined_fem)
-summary(m_clutch_rep)
-0.19809 / (0.19809 + 0.03048 + 0.35030) #= 0.19809
-confint(m_clutch_rep)
-#95% CI
-(0.4788353^2)/((0.4788353^2) + (0.2476464^2 + 0.6146856^2)) #= 0.3430071
-#2.5% CI
-(0.4096222^2) /((0.4096222^2) + (0.1225611^2) + (0.5701928^2)) #= 0.3303406
 
-
-#within and between for clutch size centred on mismatch
+#1.3 within and between for clutch size centred on mismatch
 
 # centre mismatch per individual (between effect)
 ind_avg_mismatch <- aggregate(cbind(mismatch) ~ IndividualID, combined_fem, mean)
@@ -82,37 +86,37 @@ combined_fem$mismatch_between <- lookup(combined_fem$IndividualID,ind_avg_mismat
 combined_fem$mismatch_within <- combined_fem$mismatch - combined_fem$mismatch_between
 #Plasticity = how much the year differs from her usual peak timing
 
-#Model with peak_cen (within individual effect) and peak_mean(between individual effect) 
-m_clutch_mismatch <- lmer(ClutchSize ~ mismatch_between + mismatch_within + (1|IndividualID) + (1|Year),
-                          data = combined_fem) #add year 
+#Model 
+m_clutch_mismatch <- lmer(ClutchSize ~ mismatch_between + mismatch_within + (1|IndividualID),
+                          data = combined_fem) 
 summary(m_clutch_mismatch) #random effects can never be continous. when you have a direction in mind on how a variable affects your response variable mean, put it as fixed effect
 confint(m_clutch_mismatch) #more between individual effect as opposed to plasticity. maybe the females that always arrive early have better clutch sizes 
 plot(m_clutch_mismatch)
+#UpperCI
+(0.45323063^2)/((0.45323063^2) + (0.56208476^2 + 0.54953784^2)) #= 0.3435922
 #effects mainly due to plasticity 
 
-#model for Recruits 
+ggplot()
 
-m_rec <- glmer(Recruits ~ mismatch + (1|IndividualID) + (1|Year),
-                data = combined_fem,
-                family = poisson)
-summary(m_rec)
+#2 model for Recruits 
 
-#calculate repeatability for Recruits
-m_recruits_rep <- lmer(Recruits ~ 1 + (1|IndividualID) + (1|Year),
-                     data = combined_fem)
+#2.1 calculate repeatability for Recruits
+m_recruits_rep <- glmer(Recruits ~ 1 + (1|IndividualID) + (1|Year),
+                        data = combined_fem, family = poisson)
 summary(m_recruits_rep)
 confint(m_recruits_rep)
 
 #repeatability
-0.013850 / (0.013850 + 0.001417 + 0.443682) #= 0.03017765
-confint(m_clutch_rep)
-#95% CI
-(0.18919561^2)/((0.18919561^2) + (0.07041244^2 + 0.68818278^2)) #= 0.06959286
-#2.5% CI
-(0.0000000^2) /((0.0000000^2) + (0.0000000^2) + (0.6446184^2)) #= 0
+#since it is a poisson model you cannot calculate repeatability - no residual 
 
+#2.2 Recruits explained by mismatch
+m_rec <- glmer(Recruits ~ mismatch + (1|IndividualID) + (1|Year),
+                data = combined_fem,
+                family = poisson)
+summary(m_rec)
+confint(m_rec)
 
-#within and between for Recruits centred on mismatch
+#2.3 within and between for Recruits centred on mismatch
 
 # centre mismatch per individual (between effect)
 ind_avg_mismatch <- aggregate(cbind(mismatch) ~ IndividualID, combined_fem, mean)
@@ -124,8 +128,66 @@ combined_fem$mismatch_within <- combined_fem$mismatch - combined_fem$mismatch_be
 #Plasticity = how much the year differs from her usual peak timing
 
 #Model with peak_cen (within individual effect) and peak_mean(between individual effect) 
-m_recruits_mismatch <- lmer(Recruits ~ mismatch_between + mismatch_within + (1|IndividualID) + (1|Year),
+m_recruits_mismatch <- lmer(Recruits ~ mismatch_between + mismatch_within + (1|IndividualID),
                           data = combined_fem) #add year 
 summary(m_recruits_mismatch) 
 confint(m_recruits_mismatch) 
 plot(m_recruits_mismatch)
+
+
+#plot
+#test plot 1
+plot_between <- ggpredict(m_clutch_mismatch, terms = "mismatch_between") %>%
+  mutate(effect = "Between-individual")
+
+plot_within <- ggpredict(m_clutch_mismatch, terms = "mismatch_within") %>%
+  mutate(effect = "Within-individual")
+
+plot_data <- bind_rows(plot_between, plot_within)
+
+ggplot(plot_data, aes(x = x, y = predicted, colour = effect, linetype = effect)) +
+  geom_line(size = 1.2) +
+  scale_colour_manual(values = c("Between-individual" = "blue",
+                                 "Within-individual" = "red")) +
+  scale_linetype_manual(values = c("Between-individual" = "solid",
+                                   "Within-individual" = "dashed")) +
+  labs(
+    x = "Mismatch (days)",
+    y = "Predicted Clutch Size",
+    colour = "",
+    linetype = "",
+    title = "Within vs Between Individual effects of Mismatch on Clutch Size"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "top")
+
+#plot 3
+# Extract the data actually used by the model:
+femdat_model <- combined_fem[rownames(model.frame(m_clutch_mismatch)), ] %>%
+  mutate(pred = predict(m_clutch_mismatch))
+
+set.seed(123)  # ensures reproducible sampling
+
+sample_ids <- femdat_model %>%
+  group_by(IndividualID) %>%
+  filter(n() >= 3) %>%
+  summarise() %>%
+  slice_sample(n = 10) %>%
+  pull(IndividualID)
+
+plotdat <- femdat_model %>%
+  filter(IndividualID %in% sample_ids)
+
+ggplot(combined_fem, aes(x = mismatch_within, y = ClutchSize)) +
+  geom_smooth(data=plotdat, aes(x=mismatch_within,
+                                y=pred,group = IndividualID),
+              method="lm",
+              formula = y~x, se=FALSE,
+              alpha = 0.8, linewidth = .5, color = "steelblue") +
+  geom_smooth(data=femdat_model,aes(x=mismatch_between, y=pred),
+              method = "lm", se = FALSE, color = "black") +
+  labs(x="Mismatch between lay date and caterpillar peak",
+       y="Clutch size")
+
+
+#plot 3 - final plot

@@ -1,3 +1,6 @@
+# -------- Script start stuff -----------
+# clear all data
+remove(list=ls())
 #---- laod packages ----
 
 suppressPackageStartupMessages({

@@ -92,10 +92,10 @@ combined_fem$mismatch2 <- combined_fem$mismatch^2
 
 m_clutch2 <- lmer(ClutchSize ~ mismatch  + (1|IndividualID) + (1|Year),
                  data = combined_fem)
-summary(m_clutch2)
+summary(m_clutch2) #if std error is as least half of the estumate then it is significant, negative = higher mismatch, smaller clutch
 plot(m_clutch2)
 confint(m_clutch2)
-#tried quadraticbut there was no support for that so it was removed
+#tried quadratic but there was no support for that so it was removed
 
 m_clutch2b <- lmer(ClutchSize ~ mismatch + mismatch2 + PeakBiomass + (1|IndividualID) + (1|Year),
                   data = combined_fem)
@@ -108,7 +108,7 @@ summary(m_clutch2b)
 
 #Birds that laid further away from the caterpillar peak produced smaller clutches.
 
-m_rec2 <- glmer(Recruits ~ mismatch + mismatch2 + 
+m_rec2 <- glmer(Recruits ~ mismatch + 
                   (1|IndividualID) + (1|Year),
                 data = combined_fem,
                 family = poisson)
@@ -127,17 +127,17 @@ ggplot(combined_fem, aes(x = mismatch, y = ClutchSize)) +
 ggplot(combined_fem, aes(x = mismatch, y = ClutchSize)) +
   geom_jitter(alpha=.3, width = .5) +
   geom_vline(xintercept = -15, colour = "grey40", linetype = "dashed", size = 1) +
-  geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE) +
+  geom_smooth(method="lm", formula=y~x, se=FALSE) +
   facet_wrap(~Year)
 
 
 ggplot(combined_fem, aes(x = mismatch, y = Recruits)) +
   geom_jitter(alpha=.3, width = .5) +
   geom_vline(xintercept = -15, colour = "grey40", linetype = "dashed", size = 1) +
-  geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE) +
+  geom_smooth(method="lm", formula=y~x, se=FALSE) +
   facet_wrap(~Year)
 
-ggplot(combined_fem, aes(x = mismatch, y = Mass)) +
+ ggplot(combined_fem, aes(x = mismatch, y = Mass)) +
   geom_jitter(alpha=.3, width = .5) +
   geom_vline(xintercept = -15, colour = "grey40", linetype = "dashed", size = 1) +
   geom_smooth(method="lm", formula=y~x + I(x^2), se=FALSE) +
@@ -217,9 +217,19 @@ combined_fem$mismatch_within <- combined_fem$mismatch - combined_fem$mismatch_be
 #Plasticity = how much the year differs from her usual peak timing
 
 #Model with peak_cen (within individual effect) and peak_mean(between individual effect) 
-m_clutch_mismatch <- lmer(ClutchSize ~ mismatch_between + mismatch_within + (1|PeakBiomass) + (1|IndividualID),
-                     data = combined_fem)
-summary(m_clutch_mismatch)
-confint(m_clutch_mismatch)
+m_clutch_mismatch <- lmer(ClutchSize ~ mismatch_between + mismatch_within + (1|IndividualID),
+                     data = combined_fem) #add year 
+summary(m_clutch_mismatch) #random effects can never be continous. when you have a direction in mind on how a variable affects your response variable mean, put it as fixed effect
+confint(m_clutch_mismatch) #more between individual effect as opposed to plasticity. maybe the females that always arrive early have better clutch sizes 
 plot(m_clutch_mismatch)
 #effects mainly due to plasticity 
+
+
+
+#use m_clutch 2, then within and between individual effect. 
+#do the same for recruits 
+
+
+#bud burst and lay date model = significat (std error more than half estimate) it is positive, so when the trees are late the females lay late. whoch is what we would expect.
+#for between and within, significant fixed effect. slopes cannot be indistinguished, therefore most likely due to plasticity - females able to adjust timing accoridng to environemnt. 
+#despite this there is still some females that are consistently experiencing mismatch and this impacts their clutch size and recruitments 

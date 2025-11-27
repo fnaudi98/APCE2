@@ -161,7 +161,7 @@ ggplot(plot_data, aes(x = x, y = predicted, colour = effect, linetype = effect))
   theme_classic(base_size = 14) +
   theme(legend.position = "top")
 
-
+#plot 3
 # Extract the data actually used by the model:
 femdat_model <- combined_fem[rownames(model.frame(m_clutch_mismatch)), ] %>%
   mutate(pred = predict(m_clutch_mismatch))
@@ -190,4 +190,4 @@ ggplot(combined_fem, aes(x = mismatch_within, y = ClutchSize)) +
        y="Clutch size")
 
 
-
+#plot 3 - final plot

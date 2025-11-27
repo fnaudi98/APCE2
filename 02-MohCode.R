@@ -244,7 +244,8 @@ ggplot() +
     axis.title = element_text(face = "bold"),
     plot.title = element_text(face = "bold"),
     plot.margin = margin(8, 8, 8, 8),
-    legend.position = "top"
+    legend.position = "inside",
+    legend.position.inside = c(.2,.9)
   )
 
 

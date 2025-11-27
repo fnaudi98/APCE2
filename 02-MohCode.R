@@ -30,11 +30,12 @@ treedat |>
 
 treesummary <- treedat |>
   group_by(Year) |>
-  summarise(avgBurstDate = mean(BudburstDate, na.rm=TRUE) |> round())
+  summarise(avgBurstDate = mean(BudburstDate, na.rm=TRUE) |> round(),
+            avgCatPeakDate = mean(PeakDate, na.rm=TRUE) |> round())
 
 # add avgBurstDate to birddat
 birddat <- treesummary |>
-  select(c(Year, avgBurstDate)) |>
+  select(c(Year, avgBurstDate, avgCatPeakDate)) |>
   left_join(birddat, by="Year") 
 
 birddat <- birddat |>
@@ -71,11 +72,11 @@ birddat |>
 # ID and Year as random effect
 # burstdate and sex as fixed effect
 rep_m3 <- birddat |>
-  lmer(Arrival~ avgBurstDate+Sex+(1|IndividualID) + (1|Year),
+  lmer(Arrival~ Sex + (1|IndividualID) + (1|Year),
        data=_)
 summary(rep_m3) 
 
-28.96/(28.96+45.02+31.11) # repeatability = 0.2755733
+13.112/(13.112+5.647+32.242) # repeatability = 0.257093 
 
 # -------- Repeatability of Lay Date -----------
 # ID as random effect
@@ -92,17 +93,28 @@ rep_m5 <- birddat |>
        data=_)
 summary(rep_m5) 
 
-9.911/(9.911+6.630+15.280) # repeatability = 0.311461
+9.911/(9.911+6.630+15.280) # repeatability = 0.311461 !!!
 
 # ID and Year as random effect
-# burstdate and sex as fixed effect
+# burstdate as fixed effect
 rep_m6 <- birddat |>
   filter(Sex == 1) |>
   lmer(LayingDate ~ avgBurstDate + (1|IndividualID) + (1|Year),
        data=_)
 summary(rep_m6) 
+confint(rep_m6)
 
 9.928/(9.928+2.602+15.268) # repeatability = 0.357148
+
+# ID and Year as random effect
+# burstdate and sex as fixed effect
+rep_m6.1 <- birddat |>
+  filter(Sex == 1) |>
+  lmer(LayingDate ~ burst_arr + (1|IndividualID) + (1|Year),
+       data=_)
+summary(rep_m6.1) 
+
+1.140/(1.140+37.865+5.362) # repeatability = 0.02569477
 
 # -------- Centering Within/Between Individuals -----------
 #Load package qdapTools to be able to use the lookup function
@@ -122,7 +134,19 @@ femdat$Wthin_Ind<-femdat$avgBurstDate-femdat$Btw_Ind
 #Model with annual_density_cen (within individual effect) and avgAnDens (between individual effect
 m7<-lmer(LayingDate ~ Wthin_Ind + Btw_Ind + (1|IndividualID), data= femdat)
 summary(m7)
-confint(m7)
+confint(m7) #  !!!
+
+
+#Center Annual Density per individual
+ind_avg<-aggregate(cbind(avgCatPeakDate)~IndividualID,femdat,mean) # Calc avg density per fem
+## Between individual effect: mean density for each female! This is how individuals differ
+femdat$Btw_Ind<-lookup(femdat$IndividualID,ind_avg[,c("IndividualID","avgCatPeakDate")])
+## Within individual effect: how each value differs from individual mean.
+femdat$Wthin_Ind<-femdat$avgCatPeakDate-femdat$Btw_Ind
+#Model with annual_density_cen (within individual effect) and avgAnDens (between individual effect
+m7.1<-lmer(LayingDate ~ Wthin_Ind + Btw_Ind + Arrival + (1|IndividualID), data= femdat)
+summary(m7.1)
+confint(m7.1) 
 
 
 ### again but for Arrival
@@ -149,7 +173,7 @@ femdat$Wthin_Ind<-femdat$burst_arr-femdat$Btw_Ind
 #Model with annual_density_cen (within individual effect) and avgAnDens (between individual effect
 m9<-lmer(LayingDate ~ Wthin_Ind + Btw_Ind + (1|IndividualID), data= femdat)
 summary(m9)
-confint(m9)
+confint(m9) # 
 
 ggplot(femdat, aes(x = Wthin_Ind, y = LayingDate)) +
   geom_point(alpha = 0.3) +
@@ -158,8 +182,8 @@ ggplot(femdat, aes(x = Wthin_Ind, y = LayingDate)) +
 
 #
 # Extract the data actually used by the model:
-femdat_model <- femdat[rownames(model.frame(m9)), ] %>%
-  mutate(pred = predict(m9))
+femdat_model <- femdat[rownames(model.frame(m7)), ] %>%
+  mutate(pred = predict(m7))
 
 set.seed(123)  # ensures reproducible sampling
 
@@ -167,17 +191,22 @@ sample_ids <- femdat_model %>%
   group_by(IndividualID) %>%
   filter(n() >= 3) %>%
   summarise() %>%
-  slice_sample(n = 20) %>%
+  slice_sample(n = 10) %>%
   pull(IndividualID)
 
 plotdat <- femdat_model %>%
   filter(IndividualID %in% sample_ids)
 
 ggplot(femdat, aes(x = Wthin_Ind, y = LayingDate)) +
-  geom_point(alpha = 0.1) +
-  geom_line(data=plotdat, aes(y = pred, group = IndividualID),
-            alpha = 0.5, linewidth = 1, color = "steelblue") +
-  geom_smooth(method = "lm", se = FALSE, color = "black")
+  geom_smooth(data=plotdat, aes(x=Wthin_Ind+mean(femdat$avgBurstDate, na.rm=TRUE),
+                                y=pred,group = IndividualID),
+              method="lm",
+              formula = y~x, se=FALSE,
+            alpha = 0.8, linewidth = .5, color = "steelblue") +
+  geom_smooth(data=femdat_model,aes(x=Btw_Ind, y=pred),
+    method = "lm", se = FALSE, color = "black") +
+  labs(x="Budburst from Apr 1",
+       y="Lay Date from Apr 1")
 
 
 
@@ -187,6 +216,17 @@ ggplot(femdat, aes(x = Wthin_Ind, y = LayingDate)) +
 # [x] between individual centering
 # [x] instead of difference between dates use burstdate as a fixed effect
 # [x] dont forget to use sex as fixed effect because males arrive earlier on average
+
+library(modelsummary)
+
+modelsummary(
+  list(
+    "Laying Date Repeatability"  = rep_m5,
+    "Laying Date Individual Centering"  = m7
+  )) 
+
+
+
 
 
   

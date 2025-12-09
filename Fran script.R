@@ -46,7 +46,8 @@ combined <- combined |>
   ungroup()
 
 combined_fem <- combined |>
-  filter(Sex == 1)
+  filter(Sex == 1) |>
+  filter( Year <=2023)
 
 
 #---- begin models----
@@ -54,15 +55,15 @@ combined_fem <- combined |>
 
 #1.1 calculate repeatability for clutch size: 
 m_clutch_rep <- lmer(ClutchSize ~ 1 + (1|IndividualID) + (1|Year),
-                     data = combined_fem, family = )
+                     data = combined_fem)
 summary(m_clutch_rep)
 #repeatability
-0.19809 / (0.19809 + 0.03048 + 0.35030) #= 0.3422012
+0.20771 / (0.20771 + 0.02476 + 0.34143) #= 0.3619272
 confint(m_clutch_rep)
 #95% CI
-(0.4788353^2)/((0.4788353^2) + (0.2476464^2 + 0.6146856^2)) #= 0.3430071
+(0.4901923^2)/((0.4901923^2) + (0.2284743^2 + 0.6081420^2)) #= 0.3627951
 #2.5% CI
-(0.4096222^2) /((0.4096222^2) + (0.1225611^2) + (0.5701928^2)) #= 0.3303406
+(0.4196112^2) /((0.4196112^2) + (0.1075839^2) + (0.5617665^2)) #= 0.3498872
 
 #1.2 clutch size explained by mismatch
 #tried to do this quadratic, but it provided no added value.
@@ -89,7 +90,7 @@ combined_fem$mismatch_within <- combined_fem$mismatch - combined_fem$mismatch_be
 #Model 
 m_clutch_mismatch <- lmer(ClutchSize ~ mismatch_between + mismatch_within + (1|IndividualID),
                           data = combined_fem) 
-summary(m_clutch_mismatch) #random effects can never be continous. when you have a direction in mind on how a variable affects your response variable mean, put it as fixed effect
+summary(m_clutch_mismatch) #random effects can never be continuous. when you have a direction in mind on how a variable affects your response variable mean, put it as fixed effect
 confint(m_clutch_mismatch) #more between individual effect as opposed to plasticity. maybe the females that always arrive early have better clutch sizes 
 plot(m_clutch_mismatch)
 #UpperCI
@@ -127,9 +128,9 @@ combined_fem$mismatch_between <- lookup(combined_fem$IndividualID,ind_avg_mismat
 combined_fem$mismatch_within <- combined_fem$mismatch - combined_fem$mismatch_between
 #Plasticity = how much the year differs from her usual peak timing
 
-#Model with peak_cen (within individual effect) and peak_mean(between individual effect) 
+#Model with(within individual effect) (between individual effect) 
 m_recruits_mismatch <- lmer(Recruits ~ mismatch_between + mismatch_within + (1|IndividualID),
-                          data = combined_fem) #add year 
+                          data = combined_fem)
 summary(m_recruits_mismatch) 
 confint(m_recruits_mismatch) 
 plot(m_recruits_mismatch)
@@ -191,3 +192,137 @@ ggplot(combined_fem, aes(x = mismatch_within, y = ClutchSize)) +
 
 
 #plot 3 - final plot
+# Extract the data actually used by the model:
+femdat_model <- combined_fem[rownames(model.frame(m_clutch_mismatch)), ] |>
+  mutate(pred = predict(m_clutch_mismatch),
+         mismatch = mismatch_within + mismatch_between    # uses ONLY your variables
+  )
+
+set.seed(123)  # ensures reproducible sampling
+
+sample_ids <- femdat_model %>%
+  group_by(IndividualID) %>%
+  filter(n() >= 3) %>%
+  summarise() %>%
+  slice_sample(n = 10) %>%
+  pull(IndividualID)
+
+plotdat <- femdat_model %>%
+  filter(IndividualID %in% sample_ids)
+
+ggplot() +
+  # Reaction norm lines (model predictions)
+  geom_line(
+    data = plotdat,
+    aes(
+      x = mismatch,
+      y = pred,
+      group = IndividualID,
+      color = "Individual reaction norms"
+    ),
+    linewidth = 0.8,
+    alpha = 0.8
+  ) +
+  
+  # Population-level fixed-effect line
+  geom_smooth(
+    data = femdat_model,
+    aes(
+      x = mismatch,
+      y = ClutchSize,
+      color = "Population-level effect"
+    ),
+    method = "lm",
+    se = FALSE,
+    linewidth = 1.1
+  ) +
+  
+  scale_color_manual(
+    name = "",
+    values = c(
+      "Individual reaction norms" = "steelblue",
+      "Population-level effect" = "black"
+    )
+  ) +
+  
+  labs(
+    title = "Within vs Between Individual effects of Mismatch on Clutch Size",
+    x = "Mismatch between lay date and caterpillar peak",
+    y = "Clutch size"
+  ) +
+  #theme_classic(base_size = 13) +
+  theme(
+    axis.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold"),
+    plot.margin = margin(8, 8, 8, 8),
+    legend.position = "inside",
+    legend.position.inside = c(.85,.9)
+  )
+
+#plot3 for recruits
+# Extract the data actually used by the model:
+femdat_model2 <- combined_fem[rownames(model.frame(m_recruits_mismatch)), ] |>
+  mutate(pred = predict(m_recruits_mismatch),
+         mismatch = mismatch_within + mismatch_between    # uses ONLY your variables
+  )
+
+set.seed(123)  # ensures reproducible sampling
+
+sample_ids <- femdat_model2 %>%
+  group_by(IndividualID) %>%
+  filter(n() >= 3) %>%
+  summarise() %>%
+  slice_sample(n = 10) %>%
+  pull(IndividualID)
+
+plotdat <- femdat_model2 %>%
+  filter(IndividualID %in% sample_ids)
+
+ggplot() +
+  # Reaction norm lines (model predictions)
+  geom_line(
+    data = plotdat,
+    aes(
+      x = mismatch,
+      y = pred,
+      group = IndividualID,
+      color = "Individual reaction norms"
+    ),
+    linewidth = 0.8,
+    alpha = 0.8
+  ) +
+  
+  # Population-level fixed-effect line
+  geom_smooth(
+    data = femdat_model,
+    aes(
+      x = mismatch,
+      y = Recruits,
+      color = "Population-level effect"
+    ),
+    method = "lm",
+    se = FALSE,
+    linewidth = 1.1
+  ) +
+  
+  scale_color_manual(
+    name = "",
+    values = c(
+      "Individual reaction norms" = "steelblue",
+      "Population-level effect" = "black"
+    )
+  ) +
+  
+  labs(
+    title = "Within vs Between Individual effects of Mismatch on Recruits",
+    x = "Mismatch between lay date and caterpillar peak",
+    y = "Number of Recruits"
+  ) +
+  #theme_classic(base_size = 13) +
+  theme(
+    axis.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold"),
+    plot.margin = margin(8, 8, 8, 8),
+    legend.position = "inside",
+    legend.position.inside = c(.85,.9)
+  )

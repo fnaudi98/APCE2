@@ -104,7 +104,7 @@ rep_m6 <- birddat |>
 summary(rep_m6) 
 confint(rep_m6)
 
-9.928/(9.928+2.602+15.268) # repeatability = 0.357148
+9.928/(9.928+2.602+15.268) # repeatability = 0.357148 !!!
 
 # ID and Year as random effect
 # burstdate and sex as fixed effect
